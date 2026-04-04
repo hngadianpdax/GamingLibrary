@@ -25,6 +25,8 @@ class WordleGame {
   int currentCol;
   GameStatus status;
   String? message;
+  final DateTime startTime;
+  final int? elapsedSeconds;
 
   WordleGame._({
     required this.targetWord,
@@ -33,6 +35,8 @@ class WordleGame {
     required this.currentRow,
     required this.currentCol,
     required this.status,
+    required this.startTime,
+    this.elapsedSeconds,
     this.message,
   });
 
@@ -51,6 +55,7 @@ class WordleGame {
       currentRow: 0,
       currentCol: 0,
       status: GameStatus.playing,
+      startTime: DateTime.now(),
     );
   }
 
@@ -97,7 +102,6 @@ class WordleGame {
         letter: board[currentRow][i].letter,
         state: result[i],
       );
-      // Only upgrade keyboard state (absent < present < correct)
       final current = newKeyboard[board[currentRow][i].letter.toLowerCase()];
       if (current == null || _stateRank(result[i]) > _stateRank(current)) {
         newKeyboard[board[currentRow][i].letter.toLowerCase()] = result[i];
@@ -108,10 +112,14 @@ class WordleGame {
     final int nextRow = currentRow + 1;
     GameStatus newStatus = GameStatus.playing;
     String? msg;
+    int? elapsed;
 
     if (won) {
       newStatus = GameStatus.won;
-      msg = _winMessage(currentRow + 1);
+      elapsed = DateTime.now().difference(startTime).inSeconds;
+      final tb = _calcTimeBonus(elapsed);
+      final ab = maxAttempts - currentRow;
+      msg = _winMessage(currentRow + 1, ab, tb);
     } else if (nextRow >= maxAttempts) {
       newStatus = GameStatus.lost;
       msg = 'The word was ${targetWord.toUpperCase()}';
@@ -124,14 +132,29 @@ class WordleGame {
       currentCol: 0,
       status: newStatus,
       message: msg,
+      elapsedSeconds: elapsed,
     );
   }
 
-  /// Skill-based scoring: 6 pts for 1 guess, 5 for 2, ..., 1 for 6.
-  int get score {
+  /// Attempt-based score: 6 for 1 guess → 1 for 6 guesses.
+  int get attemptScore {
     if (status != GameStatus.won) return 0;
     return maxAttempts - (currentRow - 1);
   }
+
+  /// Time bonus: 6 pts for under 60s, loses 1 pt per minute, min 0.
+  int get timeBonus {
+    if (status != GameStatus.won || elapsedSeconds == null) return 0;
+    return _calcTimeBonus(elapsedSeconds!);
+  }
+
+  int _calcTimeBonus(int seconds) {
+    final bonus = 6 - (seconds ~/ 60);
+    return bonus.clamp(0, 6);
+  }
+
+  /// Total score = attempt score + time bonus.
+  int get score => attemptScore + timeBonus;
 
   List<LetterState> _evaluateGuess(String guess) {
     final result = List.filled(wordLength, LetterState.absent);
@@ -139,7 +162,6 @@ class WordleGame {
     final guessChars = guess.split('');
     final remaining = List<String>.from(targetChars);
 
-    // First pass: correct positions
     for (int i = 0; i < wordLength; i++) {
       if (guessChars[i] == targetChars[i]) {
         result[i] = LetterState.correct;
@@ -147,7 +169,6 @@ class WordleGame {
       }
     }
 
-    // Second pass: present but wrong position
     for (int i = 0; i < wordLength; i++) {
       if (result[i] == LetterState.correct) continue;
       final idx = remaining.indexOf(guessChars[i]);
@@ -173,21 +194,17 @@ class WordleGame {
     }
   }
 
-  String _winMessage(int attempts) {
-    switch (attempts) {
-      case 1:
-        return 'LEGENDARY! +6 pts';
-      case 2:
-        return 'Brilliant! +5 pts';
-      case 3:
-        return 'Great! +4 pts';
-      case 4:
-        return 'Nice! +3 pts';
-      case 5:
-        return 'Phew! +2 pts';
-      default:
-        return 'Saved it! +1 pt';
-    }
+  String _winMessage(int attempts, int attemptPts, int timePts) {
+    final label = switch (attempts) {
+      1 => 'LEGENDARY!',
+      2 => 'Brilliant!',
+      3 => 'Great!',
+      4 => 'Nice!',
+      5 => 'Phew!',
+      _ => 'Saved it!',
+    };
+    final total = attemptPts + timePts;
+    return '$label $attemptPts + $timePts time = +$total pts';
   }
 
   List<List<LetterTile>> _copyBoard() =>
@@ -200,6 +217,7 @@ class WordleGame {
     int? currentCol,
     GameStatus? status,
     String? message,
+    int? elapsedSeconds,
   }) =>
       WordleGame._(
         targetWord: targetWord,
@@ -208,6 +226,8 @@ class WordleGame {
         currentRow: currentRow ?? this.currentRow,
         currentCol: currentCol ?? this.currentCol,
         status: status ?? this.status,
+        startTime: startTime,
+        elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
         message: message ?? this.message,
       );
 }

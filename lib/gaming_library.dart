@@ -24,11 +24,12 @@ class GamingLibrary {
 
     if (!context.mounted) return;
 
-    Navigator.of(context).push(
+    final navigator = Navigator.of(context);
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => ProviderScope(
           overrides: [],
-          child: _GamingLibraryApp(userId: userId),
+          child: _GamingLibraryApp(userId: userId, onClose: navigator.pop),
         ),
       ),
     );
@@ -37,20 +38,24 @@ class GamingLibrary {
 
 class _GamingLibraryApp extends ConsumerWidget {
   final String userId;
+  final VoidCallback? onClose;
 
-  const _GamingLibraryApp({required this.userId});
+  const _GamingLibraryApp({required this.userId, this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Load player profile on first render
+    final themeMode = ref.watch(themeModeProvider);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(playerProvider.notifier).load(userId);
     });
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      home: GamesHubScreen(userId: userId),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      home: GamesHubScreen(userId: userId, onClose: onClose),
     );
   }
 }

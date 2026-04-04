@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class NicknameService {
   static const _key = 'gaming_library_nickname';
+  static final _validPattern = RegExp(r'^[a-zA-Z0-9_]+$');
 
   static Future<String?> getCachedNickname() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,7 +33,7 @@ class NicknameService {
     final trimmed = nickname.trim();
     if (trimmed.length < 3) return 'Nickname must be at least 3 characters.';
     if (trimmed.length > 20) return 'Nickname must be 20 characters or less.';
-    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(trimmed)) {
+    if (!_validPattern.hasMatch(trimmed)) {
       return 'Only letters, numbers, and underscores allowed.';
     }
     if (isRestricted(trimmed)) return 'That nickname is not allowed.';
