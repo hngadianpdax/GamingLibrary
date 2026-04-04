@@ -14,7 +14,7 @@ class ExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'Gaming Library Demo',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: AppTheme.dark,
       home: const HomeScreen(),
     );
   }
@@ -28,26 +28,27 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.dark;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.sports_esports, color: AppColors.primary, size: 64),
+            Icon(Icons.sports_esports, color: colors.primary, size: 64),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Main App',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Tap the button below to open the Games Hub',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -56,8 +57,8 @@ class HomeScreen extends StatelessWidget {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Open Game Arcade'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textPrimary,
+                backgroundColor: colors.primary,
+                foregroundColor: colors.textPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
             ),

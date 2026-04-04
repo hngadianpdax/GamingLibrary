@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../core/services/providers.dart';
 import '../games/wordle/wordle_screen.dart';
+import '../games/memory/memory_screen.dart';
+import '../games/invaders/invaders_screen.dart';
 import 'leaderboard_screen.dart';
 import 'nickname_screen.dart';
 
@@ -13,34 +15,67 @@ class GamesHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final playerAsync = ref.watch(playerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('GAME ARCADE'),
-        backgroundColor: AppColors.surface,
+        title: const Text('PDAX ARCADE'),
+        backgroundColor: colors.surface,
         actions: [
           playerAsync.whenOrNull(
             data: (player) => player != null
                 ? TextButton.icon(
                     onPressed: () => _openNicknameEdit(context, ref),
-                    icon: const Icon(Icons.person, color: AppColors.textSecondary, size: 16),
+                    icon: Icon(Icons.person, color: colors.textSecondary, size: 16),
                     label: Text(
                       player.nickname,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 13),
                     ),
                   )
                 : const SizedBox.shrink(),
           ) ?? const SizedBox.shrink(),
-          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: colors.textSecondary,
+            ),
+            tooltip: isDark ? 'Switch to Light' : 'Switch to Dark',
+            onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: playerAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, _) => Center(
-          child: Text('Error loading profile', style: Theme.of(context).textTheme.bodyMedium),
-        ),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primary)),
+        error: (e, st) {
+          debugPrint('[HUB] Profile load error: $e\n$st');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: colors.error, size: 40),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Error loading profile\n$e',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.read(playerProvider.notifier).load(userId),
+                    child: const Text('RETRY'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
         data: (player) {
           if (player == null) {
             return NicknameScreen(
@@ -78,18 +113,19 @@ class _GameGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final games = [
       _GameCard(
-        id: 'wordle',
-        title: 'CRYPTODLE',
-        description: 'Guess the 5-letter crypto term in 6 tries.',
+        id: 'tradle',
+        title: 'TRADLE',
+        description: 'Guess the 5-letter finance & trading term in 6 tries.',
         icon: Icons.grid_on,
-        accentColor: AppColors.success,
+        accentColor: colors.success,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => WordleScreen(userId: userId, nickname: nickname),
         )),
         onLeaderboard: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => LeaderboardScreen(gameId: 'wordle', gameTitle: 'CRYPTODLE'),
+          builder: (_) => LeaderboardScreen(gameId: 'tradle', gameTitle: 'TRADLE', userId: userId),
         )),
       ),
       _GameCard(
@@ -97,10 +133,34 @@ class _GameGrid extends StatelessWidget {
         title: 'MEMORY GRID',
         description: 'Memorize the tiles. Recall them. Survive.',
         icon: Icons.grid_view,
-        accentColor: AppColors.warning,
-        comingSoon: true,
-        onTap: () {},
-        onLeaderboard: () {},
+        accentColor: colors.warning,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => MemoryScreen(userId: userId, nickname: nickname),
+        )),
+        onLeaderboard: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => LeaderboardScreen(
+            gameId: 'memory',
+            gameTitle: 'MEMORY GRID',
+            userId: userId,
+          ),
+        )),
+      ),
+      _GameCard(
+        id: 'invaders',
+        title: 'INVADERS',
+        description: 'Defend against waves of enemies across 3 stages.',
+        icon: Icons.rocket_launch,
+        accentColor: colors.error,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => InvadersScreen(userId: userId, nickname: nickname),
+        )),
+        onLeaderboard: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => LeaderboardScreen(
+            gameId: 'invaders',
+            gameTitle: 'INVADERS',
+            userId: userId,
+          ),
+        )),
       ),
     ];
 
@@ -127,7 +187,6 @@ class _GameCard extends StatelessWidget {
   final String description;
   final IconData icon;
   final Color accentColor;
-  final bool comingSoon;
   final VoidCallback onTap;
   final VoidCallback onLeaderboard;
 
@@ -139,21 +198,21 @@ class _GameCard extends StatelessWidget {
     required this.accentColor,
     required this.onTap,
     required this.onLeaderboard,
-    this.comingSoon = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: comingSoon ? null : onTap,
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -182,26 +241,6 @@ class _GameCard extends StatelessWidget {
                                     letterSpacing: 1.5,
                                   ),
                             ),
-                            if (comingSoon) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-                                ),
-                                child: const Text(
-                                  'SOON',
-                                  style: TextStyle(
-                                    color: AppColors.warning,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -211,9 +250,9 @@ class _GameCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!comingSoon) ...[
+              ...[
                 const SizedBox(height: 16),
-                const Divider(color: AppColors.border, height: 1),
+                Divider(color: colors.border, height: 1),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -230,8 +269,8 @@ class _GameCard extends StatelessWidget {
                       icon: const Icon(Icons.leaderboard, size: 16),
                       label: const Text('Scores'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
+                        foregroundColor: colors.textSecondary,
+                        side: BorderSide(color: colors.border),
                       ),
                     ),
                   ],

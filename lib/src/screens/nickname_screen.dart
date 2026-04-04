@@ -73,8 +73,9 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -82,7 +83,7 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.sports_esports, color: AppColors.primary, size: 64),
+                Icon(Icons.sports_esports, color: colors.primary, size: 64),
                 const SizedBox(height: 24),
                 Text(
                   widget.isEditing ? 'Change Nickname' : 'Choose Your Nickname',
@@ -100,12 +101,12 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
                   controller: _controller,
                   autofocus: true,
                   maxLength: 20,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style: TextStyle(color: colors.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Nickname',
                     hintText: 'e.g. CryptoWolf_99',
                     errorText: _error,
-                    counterStyle: const TextStyle(color: AppColors.textSecondary),
+                    counterStyle: TextStyle(color: colors.textSecondary),
                   ),
                   onSubmitted: (_) => _submit(),
                 ),
@@ -115,12 +116,12 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
                   child: ElevatedButton(
                     onPressed: _loading ? null : _submit,
                     child: _loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                             ),
                           )
                         : Text(widget.isEditing ? 'Save' : 'Enter the Arena'),

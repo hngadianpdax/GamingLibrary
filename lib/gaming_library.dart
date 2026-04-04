@@ -42,14 +42,17 @@ class _GamingLibraryApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Load player profile on first render
+    final themeMode = ref.watch(themeModeProvider);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(playerProvider.notifier).load(userId);
     });
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: GamesHubScreen(userId: userId),
     );
   }
