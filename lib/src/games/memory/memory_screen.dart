@@ -9,7 +9,7 @@ import 'result/memory_level_sheet.dart';
 import 'result/memory_gameover_sheet.dart';
 
 final _memoryProvider =
-    StateProvider<MemoryGame>((ref) => MemoryGame.startSession());
+    StateProvider.autoDispose<MemoryGame>((ref) => MemoryGame.startSession());
 
 class MemoryScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -29,6 +29,8 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   Timer? _countdownTimer;
   Timer? _revealTimer;
   Timer? _gameTimer;
+  bool _beginPlayingPending = false;
+  bool _tapLocked = false;
 
   @override
   void initState() {
@@ -68,13 +70,21 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
 
       case MemoryPhase.hidden:
         _cancelAllTimers();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          ref.read(_memoryProvider.notifier).state =
-              ref.read(_memoryProvider).beginPlaying();
-        });
+        if (!_beginPlayingPending) {
+          _beginPlayingPending = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _beginPlayingPending = false;
+            if (!mounted) return;
+            ref.read(_memoryProvider.notifier).state =
+                ref.read(_memoryProvider).beginPlaying();
+          });
+        }
 
       case MemoryPhase.playing:
+        _tapLocked = true;
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) setState(() => _tapLocked = false);
+        });
         _startGameTimer();
 
       case MemoryPhase.levelComplete:
@@ -184,6 +194,7 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   }
 
   void _onTileTap(int index) {
+    if (_tapLocked) return;
     final game = ref.read(_memoryProvider);
     if (game.phase != MemoryPhase.playing) return;
 
@@ -205,7 +216,8 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final game = ref.watch(_memoryProvider);
+    // Watch only phase — timer ticks and tile taps no longer rebuild the Scaffold.
+    final phase = ref.watch(_memoryProvider.select((g) => g.phase));
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -226,35 +238,72 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _LevelIndicator(
-              level: game.level,
-              totalScore: game.totalScore + game.levelScore,
-              lives: game.lives,
-              timerSeconds: game.timerSeconds,
-              phase: game.phase,
-            ),
-            Expanded(child: _phaseBody(game)),
+            const _LevelIndicator(),
+            const _StreakBadge(),
+            Expanded(child: _phaseBody(phase)),
           ],
         ),
       ),
     );
   }
 
-  Widget _phaseBody(MemoryGame game) {
-    switch (game.phase) {
-      case MemoryPhase.countdown:
-        return _CountdownOverlay(value: game.countdownValue);
-      case MemoryPhase.reveal:
-      case MemoryPhase.hidden:
-      case MemoryPhase.playing:
-      case MemoryPhase.levelComplete:
-      case MemoryPhase.gameOver:
-        return _MemoryGrid(game: game, onTileTap: _onTileTap);
+  Widget _phaseBody(MemoryPhase phase) {
+    if (phase == MemoryPhase.countdown) {
+      return Consumer(
+        builder: (_, ref, _) {
+          final value =
+              ref.watch(_memoryProvider.select((g) => g.countdownValue));
+          return _CountdownOverlay(value: value);
+        },
+      );
     }
+    return _MemoryGrid(onTileTap: _onTileTap);
   }
 }
 
 // ── Supporting widgets ────────────────────────────────────────────────────────
+
+class _StreakBadge extends ConsumerWidget {
+  const _StreakBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label =
+        ref.watch(_memoryProvider.select((g) => g.streakLabel));
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, anim) => ScaleTransition(
+        scale: anim,
+        child: FadeTransition(opacity: anim, child: child),
+      ),
+      child: label == null
+          ? const SizedBox.shrink(key: ValueKey('none'))
+          : Container(
+              key: ValueKey(label),
+              margin: const EdgeInsets.only(bottom: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFC10A).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFFFC10A).withValues(alpha: 0.6),
+                ),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFFFFC10A),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+    );
+  }
+}
 
 class _CountdownOverlay extends StatelessWidget {
   final int value;
@@ -290,24 +339,19 @@ class _CountdownOverlay extends StatelessWidget {
   }
 }
 
-class _LevelIndicator extends StatelessWidget {
-  final int level;
-  final int totalScore;
-  final int lives;
-  final int timerSeconds;
-  final MemoryPhase phase;
-
-  const _LevelIndicator({
-    required this.level,
-    required this.totalScore,
-    required this.lives,
-    required this.timerSeconds,
-    required this.phase,
-  });
+class _LevelIndicator extends ConsumerWidget {
+  const _LevelIndicator();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final level = ref.watch(_memoryProvider.select((g) => g.level));
+    final totalScore =
+        ref.watch(_memoryProvider.select((g) => g.totalScore + g.levelScore));
+    final lives = ref.watch(_memoryProvider.select((g) => g.lives));
+    final timerSeconds =
+        ref.watch(_memoryProvider.select((g) => g.timerSeconds));
+    final phase = ref.watch(_memoryProvider.select((g) => g.phase));
     final progress = level / MemoryGame.maxLevel;
     final showTimer = phase == MemoryPhase.playing ||
         phase == MemoryPhase.hidden ||
@@ -393,23 +437,23 @@ class _LevelIndicator extends StatelessWidget {
   }
 }
 
-class _MemoryGrid extends StatelessWidget {
-  final MemoryGame game;
+class _MemoryGrid extends ConsumerWidget {
   final void Function(int index) onTileTap;
 
-  const _MemoryGrid({required this.game, required this.onTileTap});
+  const _MemoryGrid({required this.onTileTap});
 
   @override
-  Widget build(BuildContext context) {
-    final size = game.config.gridSize;
-    final padding = 16.0;
-    final spacing = 4.0;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final size =
+        ref.watch(_memoryProvider.select((g) => g.config.gridSize));
+    const padding = 16.0;
+    const spacing = 4.0;
     final available = MediaQuery.of(context).size.width - padding * 2;
     final tileSize = (available - spacing * (size - 1)) / size;
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(padding),
+        padding: const EdgeInsets.all(padding),
         child: SizedBox(
           width: available,
           height: tileSize * size + spacing * (size - 1),
@@ -422,9 +466,16 @@ class _MemoryGrid extends StatelessWidget {
               crossAxisSpacing: spacing,
             ),
             itemCount: size * size,
-            itemBuilder: (_, index) => _MemoryTile(
-              state: game.tiles[index],
-              onTap: () => onTileTap(index),
+            itemBuilder: (_, index) => Consumer(
+              builder: (_, ref, _) {
+                final tileState = ref.watch(
+                  _memoryProvider.select((g) => g.tiles[index]),
+                );
+                return _MemoryTile(
+                  state: tileState,
+                  onTap: () => onTileTap(index),
+                );
+              },
             ),
           ),
         ),

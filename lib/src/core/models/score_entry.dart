@@ -14,4 +14,6 @@ class ScoreEntry {
     this.gamesPlayed = 1,
     this.rank = 0,
   });
+
+  double get avgScore => gamesPlayed > 0 ? score / gamesPlayed : 0;
 }

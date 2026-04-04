@@ -6,7 +6,8 @@ import 'wordle_game.dart';
 import '../../screens/leaderboard_screen.dart';
 import 'result/tradle_result_sheet.dart';
 
-final _wordleProvider = StateProvider<WordleGame>((ref) => WordleGame.start());
+final _wordleProvider =
+    StateProvider.autoDispose<WordleGame>((ref) => WordleGame.start());
 
 class WordleScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -41,7 +42,7 @@ class _WordleScreenState extends ConsumerState<WordleScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.listenManual(_wordleProvider, (prev, next) {
-        // Show toast for "Word not found" and "Not enough letters"
+        // Invalid submit: word not found / not enough letters → show toast
         if (next.status == GameStatus.playing &&
             next.message != null &&
             next.message != prev?.message) {
@@ -97,6 +98,7 @@ class _WordleScreenState extends ConsumerState<WordleScreen>
   void _showToast(String message) {
     setState(() => _toastMessage = message);
     _toastController.forward(from: 0).then((_) {
+      if (!mounted) return;
       Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted) _toastController.reverse();
       });

@@ -1,15 +1,22 @@
 import 'score_entry.dart';
 
 class LeaderboardResult {
-  /// Top N players sorted by cumulative score.
-  final List<ScoreEntry> topEntries;
+  /// Top N players sorted by average score per game (descending).
+  final List<ScoreEntry> topByAverage;
 
-  /// The current user's aggregated entry with their actual rank.
-  /// Null if the user has no scores yet.
-  final ScoreEntry? userEntry;
+  /// Top N players sorted by total cumulative score (descending).
+  final List<ScoreEntry> topByTotal;
+
+  /// Current user's entry ranked by average. Null if no scores yet.
+  final ScoreEntry? userEntryByAverage;
+
+  /// Current user's entry ranked by total. Null if no scores yet.
+  final ScoreEntry? userEntryByTotal;
 
   const LeaderboardResult({
-    required this.topEntries,
-    this.userEntry,
+    required this.topByAverage,
+    required this.topByTotal,
+    this.userEntryByAverage,
+    this.userEntryByTotal,
   });
 }
