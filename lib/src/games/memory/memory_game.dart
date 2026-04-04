@@ -62,6 +62,8 @@ class MemoryGame {
   final Set<int> targetIndices;
   final int correctFound;
   final GameOverReason? gameOverReason;
+  final int currentStreak;
+  final int bestStreak;
 
   const MemoryGame._({
     required this.level,
@@ -76,7 +78,27 @@ class MemoryGame {
     required this.targetIndices,
     required this.correctFound,
     this.gameOverReason,
+    this.currentStreak = 0,
+    this.bestStreak = 0,
   });
+
+  // ── Streak helpers ────────────────────────────────────────────────────────
+
+  int get streakBonus {
+    if (currentStreak >= 60) return 5;
+    if (currentStreak >= 40) return 3;
+    if (currentStreak >= 25) return 2;
+    if (currentStreak >= 15) return 1;
+    return 0;
+  }
+
+  String? get streakLabel {
+    if (currentStreak >= 60) return 'ON FIRE 🔥';
+    if (currentStreak >= 40) return '40× STREAK';
+    if (currentStreak >= 25) return '25× STREAK';
+    if (currentStreak >= 15) return '15× STREAK';
+    return null;
+  }
 
   factory MemoryGame.startSession() {
     const level = 1;
@@ -94,6 +116,8 @@ class MemoryGame {
       tiles: List.filled(config.totalCells, TileState.unrevealed),
       targetIndices: targets,
       correctFound: 0,
+      currentStreak: 0,
+      bestStreak: 0,
     );
   }
 
@@ -158,12 +182,18 @@ class MemoryGame {
     if (targetIndices.contains(index)) {
       newTiles[index] = TileState.correct;
       final newCorrect = correctFound + 1;
-      final newLevelScore = levelScore + config.pointsPerTile;
+      final int newStreak = currentStreak + 1;
+      final int newBest = newStreak > bestStreak ? newStreak : bestStreak;
+      // Bonus is based on the streak *after* this tap
+      final bonus = _streakBonusFor(newStreak);
+      final newLevelScore = levelScore + config.pointsPerTile + bonus;
       if (newCorrect == targetIndices.length) {
         return _copyWith(
           tiles: newTiles,
           correctFound: newCorrect,
           levelScore: newLevelScore,
+          currentStreak: newStreak,
+          bestStreak: newBest,
           phase: MemoryPhase.levelComplete,
         );
       }
@@ -171,6 +201,8 @@ class MemoryGame {
         tiles: newTiles,
         correctFound: newCorrect,
         levelScore: newLevelScore,
+        currentStreak: newStreak,
+        bestStreak: newBest,
       );
     } else {
       newTiles[index] = TileState.wrong;
@@ -179,11 +211,12 @@ class MemoryGame {
         return _copyWith(
           tiles: newTiles,
           lives: 0,
+          currentStreak: 0,
           phase: MemoryPhase.gameOver,
           gameOverReason: GameOverReason.livesExhausted,
         );
       }
-      return _copyWith(tiles: newTiles, lives: newLives);
+      return _copyWith(tiles: newTiles, lives: newLives, currentStreak: 0);
     }
   }
 
@@ -221,7 +254,17 @@ class MemoryGame {
       tiles: List.filled(nextConfig.totalCells, TileState.unrevealed),
       targetIndices: nextTargets,
       correctFound: 0,
+      currentStreak: currentStreak,
+      bestStreak: bestStreak,
     );
+  }
+
+  static int _streakBonusFor(int streak) {
+    if (streak >= 60) return 5;
+    if (streak >= 40) return 3;
+    if (streak >= 25) return 2;
+    if (streak >= 15) return 1;
+    return 0;
   }
 
   MemoryGame _copyWith({
@@ -237,6 +280,8 @@ class MemoryGame {
     Set<int>? targetIndices,
     int? correctFound,
     GameOverReason? gameOverReason,
+    int? currentStreak,
+    int? bestStreak,
   }) {
     return MemoryGame._(
       level: level ?? this.level,
@@ -251,6 +296,8 @@ class MemoryGame {
       targetIndices: targetIndices ?? this.targetIndices,
       correctFound: correctFound ?? this.correctFound,
       gameOverReason: gameOverReason ?? this.gameOverReason,
+      currentStreak: currentStreak ?? this.currentStreak,
+      bestStreak: bestStreak ?? this.bestStreak,
     );
   }
 }

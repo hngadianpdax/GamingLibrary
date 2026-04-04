@@ -143,6 +143,14 @@ class _MemoryGameOverSheetState extends ConsumerState<MemoryGameOverSheet> {
                     color: colors.primary,
                   ),
                   const SizedBox(height: 8),
+                  _StatRow(
+                    label: 'BEST STREAK',
+                    value: '${game.bestStreak} tiles',
+                    color: game.bestStreak >= 15
+                        ? colors.warning
+                        : colors.textSecondary,
+                  ),
+                  const SizedBox(height: 8),
                   _LivesRow(lives: game.lives),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
