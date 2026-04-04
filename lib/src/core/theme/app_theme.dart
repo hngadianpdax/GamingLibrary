@@ -113,6 +113,15 @@ extension AppColorsX on BuildContext {
 // ── ThemeData builders ────────────────────────────────────────────────────────
 
 class AppTheme {
+  static final _appBarTitleStyle = GoogleFonts.plusJakartaSans(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  );
+  static final _buttonTextStyle = GoogleFonts.plusJakartaSans(
+    fontWeight: FontWeight.w600,
+    fontSize: 15,
+  );
+
   static ThemeData _base(AppColors c, Brightness brightness) {
     return ThemeData(
       brightness: brightness,
@@ -129,7 +138,7 @@ class AppTheme {
         error: c.error,
         onError: Colors.white,
       ),
-      textTheme: GoogleFonts.soraTextTheme(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(
         TextTheme(
           displayLarge:  TextStyle(color: c.textPrimary),
           displayMedium: TextStyle(color: c.textPrimary),
@@ -147,11 +156,7 @@ class AppTheme {
         backgroundColor: c.surface,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.sora(
-          color: c.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        titleTextStyle: _appBarTitleStyle.copyWith(color: c.textPrimary),
         iconTheme: IconThemeData(color: c.textPrimary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -160,7 +165,7 @@ class AppTheme {
           foregroundColor: brightness == Brightness.dark ? Colors.white : Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: GoogleFonts.sora(fontWeight: FontWeight.w600, fontSize: 15),
+          textStyle: _buttonTextStyle,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
