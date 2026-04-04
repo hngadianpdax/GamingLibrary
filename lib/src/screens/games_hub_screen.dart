@@ -1,17 +1,19 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../core/services/providers.dart';
 import '../games/wordle/wordle_screen.dart';
 import '../games/memory/memory_screen.dart';
-import '../games/invaders/invaders_screen.dart';
 import 'leaderboard_screen.dart';
 import 'nickname_screen.dart';
+import 'partner_token_data.dart';
 
 class GamesHubScreen extends ConsumerWidget {
   final String userId;
+  final VoidCallback? onClose;
 
-  const GamesHubScreen({super.key, required this.userId});
+  const GamesHubScreen({super.key, required this.userId, this.onClose});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +27,12 @@ class GamesHubScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('PDAX ARCADE'),
         backgroundColor: colors.surface,
+        leading: onClose != null
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                onPressed: onClose,
+              )
+            : null,
         actions: [
           playerAsync.whenOrNull(
             data: (player) => player != null
@@ -145,23 +153,6 @@ class _GameGrid extends StatelessWidget {
           ),
         )),
       ),
-      _GameCard(
-        id: 'invaders',
-        title: 'INVADERS',
-        description: 'Defend against waves of enemies across 3 stages.',
-        icon: Icons.rocket_launch,
-        accentColor: colors.error,
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => InvadersScreen(userId: userId, nickname: nickname),
-        )),
-        onLeaderboard: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => LeaderboardScreen(
-            gameId: 'invaders',
-            gameTitle: 'INVADERS',
-            userId: userId,
-          ),
-        )),
-      ),
     ];
 
     return ListView(
@@ -176,6 +167,9 @@ class _GameGrid extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ...games,
+        const SizedBox(height: 8),
+        const _PartnerTokenStrip(),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -278,6 +272,212 @@ class _GameCard extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Partner Token Strip ───────────────────────────────────────────────────────
+
+class _PartnerTokenStrip extends StatefulWidget {
+  const _PartnerTokenStrip();
+
+  @override
+  State<_PartnerTokenStrip> createState() => _PartnerTokenStripState();
+}
+
+class _PartnerTokenStripState extends State<_PartnerTokenStrip> {
+  late final ScrollController _scrollController;
+  late final Timer _timer;
+  int _currentIndex = 0;
+
+  static const _cardWidth = 148.0;
+  static const _cardSpacing = 10.0;
+  static const _scrollDuration = Duration(milliseconds: 500);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final tokens = PartnerTokenData.featured;
+      final next = (_currentIndex + 1) % tokens.length;
+      final offset = next * (_cardWidth + _cardSpacing);
+      _scrollController.animateTo(
+        offset,
+        duration: _scrollDuration,
+        curve: Curves.easeInOut,
+      );
+      setState(() => _currentIndex = next);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final tokens = PartnerTokenData.featured;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'FEATURED TOKENS',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12,
+                letterSpacing: 2,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'SPONSORED',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 9,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 124,
+          child: ListView.separated(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            itemCount: tokens.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: _cardSpacing),
+            itemBuilder: (_, index) => _TokenCard(
+              token: tokens[index],
+              isActive: index == _currentIndex,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(tokens.length, (i) {
+            final isActive = i == _currentIndex;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: isActive ? 16 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? tokens[_currentIndex].accentColor
+                    : colors.border,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _TokenCard extends StatelessWidget {
+  final PartnerTokenData token;
+  final bool isActive;
+
+  const _TokenCard({required this.token, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: token.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: 148,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive
+                ? token.accentColor.withValues(alpha: 0.6)
+                : colors.border,
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: token.accentColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(token.icon, color: token.accentColor, size: 18),
+                ),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: token.accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'TRADE',
+                    style: TextStyle(
+                      color: token.accentColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              token.ticker,
+              style: TextStyle(
+                color: token.accentColor,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              token.name,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 10,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            Text(
+              token.price,
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
